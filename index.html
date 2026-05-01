@@ -175,6 +175,7 @@
 
     <script>
         let markets = [];
+        let intasendInstance = null;
 
         const baseMarkets = [
             { q: "Will Jesus come back before June?", p: 4, id: "m-jesus" },
@@ -191,7 +192,41 @@
             loadPersistedMarkets();
             syncState(); 
             render();
+            initIntaSend();
         });
+
+        function initIntaSend() {
+            // Initialize once on page load to ensure instance is ready immediately
+            try {
+                if (window.IntaSend) {
+                    intasendInstance = new window.IntaSend({
+                        publicAPIKey: "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad",
+                        live: false
+                    });
+
+                    intasendInstance.on("COMPLETE", (resp) => {
+                        const amt = document.getElementById('depAmt').value;
+                        let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
+                        localStorage.setItem('nx_safe_balance', cur + Number(amt));
+                        syncState();
+                        closeModal('depositModal');
+                        alert(`Success! Deposited Ksh ${amt}`);
+                        resetDepButton();
+                    });
+
+                    intasendInstance.on("FAILED", (resp) => {
+                        alert("The checkout failed or was closed.");
+                        resetDepButton();
+                    });
+
+                    intasendInstance.on("IN-PROGRESS", () => {
+                        document.getElementById('depBtn').innerText = "Processing...";
+                    });
+                }
+            } catch(e) {
+                console.error("IntaSend direct init error:", e);
+            }
+        }
 
         function loadPersistedMarkets() {
             const stored = localStorage.getItem('nx_safe_markets');
@@ -350,51 +385,15 @@
             btn.innerText = "Launching checkout...";
             btn.disabled = true;
 
-            try {
-                // Instantiating the official IntaSend library
-                const intasend = new window.IntaSend({
-                    publicAPIKey: "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad",
-                    live: false
-                });
-
-                intasend.checkout({
-                    amount: amt,
-                    currency: "KES",
-                    email: email,
-                    api_ref: "terminal-deposit"
-                });
-
-                intasend.on("COMPLETE", (resp) => {
-                    let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
-                    localStorage.setItem('nx_safe_balance', cur + Number(amt));
-                    syncState();
-                    closeModal('depositModal');
-                    alert(`Payment completed! Account credited with Ksh ${amt}`);
-                    btn.innerText = "Confirm Deposit";
-                    btn.disabled = false;
-                });
-
-                intasend.on("FAILED", (resp) => {
-                    alert("The payment attempt failed.");
-                    btn.innerText = "Confirm Deposit";
-                    btn.disabled = false;
-                });
-
-                intasend.on("IN-PROGRESS", () => {
-                    btn.innerText = "Processing...";
-                });
-
-            } catch (e) {
-                console.error(e);
-                alert("Please check your network or try loading the page again.");
-                btn.innerText = "Confirm Deposit";
-                btn.disabled = false;
-            }
-        }
-
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function logout() { if(confirm("End Session?")) { localStorage.clear(); location.reload(); } }
-    </script>
-</body>
-</html>
+            // Trigger the preloaded IntaSend instance
+            if (intasendInstance) {
+                try {
+                    intasendInstance.checkout({
+                        amount: amt,
+                        currency: "KES",
+                        email: email,
+                        api_ref: "terminal-deposit"
+                    });
+                } catch (e) {
+                    alert("IntaSend runtime setup error. Please refresh.");
+                   
