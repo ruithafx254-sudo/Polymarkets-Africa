@@ -14,23 +14,29 @@
             --tech-bg: #0f172a;
         }
         
-        body { 
+        html, body { 
+            height: 100%;
+            overflow: hidden;
             background: #fafafa; 
             color: var(--text-main); 
             margin: 0; 
-            padding-top: 80px; 
+            padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             -webkit-font-smoothing: antialiased; 
         }
 
+        /* Top Bar pinned perfectly */
         .header-stack { 
-            position: fixed; 
+            position: absolute; 
             top: 0; 
             left: 0; 
             right: 0; 
+            height: 64px;
             background: #fff; 
             z-index: 2000; 
             border-bottom: 1px solid var(--border); 
+            box-sizing: border-box;
+            display: block; /* Control visibility directly via JS */
         }
 
         .top-nav { 
@@ -38,7 +44,7 @@
             align-items: center; 
             justify-content: space-between; 
             padding: 0 16px; 
-            height: 64px; 
+            height: 100%; 
         }
         
         .logo-wrap { display: flex; flex-direction: column; line-height: 1; }
@@ -52,7 +58,14 @@
         
         .user-id { width: 34px; height: 34px; background: var(--tech-bg); color: rgba(255,255,255,0.95); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; font-weight: 800; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
 
-        #dashboard { max-width: 550px; margin: auto; padding: 12px; }
+        #dashboard { 
+            height: calc(100vh - 64px);
+            margin-top: 64px;
+            overflow-y: auto; 
+            padding: 12px; 
+            box-sizing: border-box;
+            -webkit-overflow-scrolling: touch;
+        }
         
         .market-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .m-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
@@ -88,7 +101,7 @@
 </head>
 <body>
 
-    <div class="header-stack">
+    <div id="topHeader" class="header-stack">
         <div class="top-nav">
             <div class="logo-wrap">
                 <div class="logo-main">Polymarkets</div>
@@ -192,7 +205,6 @@
             syncState(); 
             render();
             
-            // Initialize IntaSend client
             if (window.IntaSend) {
                 window.intasendInstance = new window.IntaSend({
                     publicAPIKey: "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad",
@@ -205,11 +217,18 @@
                     localStorage.setItem('nx_safe_balance', cur + paidAmt);
                     syncState();
                     closeModal('depositModal');
+                    showHeader(); // Re-display the header after payment is finished
                     alert(`M-Pesa transaction confirmed! Ksh ${paidAmt} deposited.`);
                 });
 
                 window.intasendInstance.on("FAILED", (results) => {
+                    showHeader(); // Re-display header if it fails
                     alert("Payment failed. Please try again.");
+                });
+
+                window.intasendInstance.on("IN_PROGRESS", () => {
+                    // Ensures bar remains hidden while paying
+                    hideHeader();
                 });
             }
         });
@@ -368,19 +387,14 @@
             if(amt < 200) return alert("Minimum deposit requirement is Ksh 200");
 
             if (window.intasendInstance) {
+                // 1. Hide the header bar instantly
+                hideHeader();
+                
+                // 2. Hide the deposit overlay immediately to speed up navigation
+                closeModal('depositModal');
+
+                // 3. Launch checkout page with no interface delays
                 window.intasendInstance.run({
                     amount: Number(amt),
                     currency: "KES",
-                    email: email
-                });
-            } else {
-                alert("Payment gateway not initialized. Check your network.");
-            }
-        }
-
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function logout() { if(confirm("End Session?")) { localStorage.clear(); location.reload(); } }
-    </script>
-</body>
-</html>
+         
