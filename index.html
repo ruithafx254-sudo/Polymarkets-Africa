@@ -141,7 +141,7 @@
     <div id="depositModal" class="overlay">
         <div class="modal">
             <h3 style="margin: 0 0 4px 0; font-size:18px; font-weight:800;">Deposit Funds</h3>
-            <p style="color: var(--text-sub); font-size: 13px; margin-top: 0; margin-bottom:16px;">Verified Instant Deposit (Min Ksh 200)</p>
+            <p style="color: var(--text-sub); font-size: 13px; margin-top: 0; margin-bottom:16px;">Direct M-Pesa & Card Checkout (Min Ksh 200)</p>
             
             <div style="background:#f8fafc; padding:14px; border-radius:12px; border: 1px solid var(--border);">
                 <input type="number" id="depAmt" class="input-tech" style="font-size: 28px; text-align: center; font-weight: 800; background: transparent; border: none; margin:0;" placeholder="0">
@@ -174,7 +174,6 @@
     <script>
         let markets = [];
 
-        // All prediction listings in one single scrollable list
         const baseMarkets = [
             { q: "Will Jesus come back before June?", p: 4, id: "m-jesus" },
             { q: "Will global central banks reduce interest rates by June?", p: 72, id: "m-rates" },
@@ -345,16 +344,55 @@
             if(!email) return openModal('authModal');
             if(amt < 200) return alert("Minimum deposit requirement is Ksh 200");
 
-            let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
-            localStorage.setItem('nx_safe_balance', cur + Number(amt));
-            syncState();
-            closeModal('depositModal');
-            alert(`M-Pesa transaction confirmed! Ksh ${amt} deposited.`);
+            const btn = document.getElementById('depBtn');
+            btn.innerText = "Preparing checkout...";
+            btn.disabled = true;
+
+            // Step 1: Inject dynamic script tag
+            if (!window.IntaSend) {
+                const s = document.createElement('script');
+                s.src = "https://unpkg.com/intasend-inlinejs-sdk@4.0.7/build/intasend-inline.js";
+                s.async = true;
+                
+                s.onload = () => triggerCheckout(amt, email);
+                s.onerror = () => {
+                    alert("SDK gateway failed to load. Please try again.");
+                    btn.innerText = "Confirm Deposit";
+                    btn.disabled = false;
+                };
+                document.head.appendChild(s);
+            } else {
+                triggerCheckout(amt, email);
+            }
         }
 
-        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function logout() { if(confirm("End Session?")) { localStorage.clear(); location.reload(); } }
-    </script>
-</body>
-</html>
+        function triggerCheckout(amt, email) {
+            try {
+                const intasend = new window.IntaSend({
+                    publicAPIKey: "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad",
+                    live: false
+                });
+
+                intasend.on("COMPLETE", (resp) => {
+                    let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
+                    localStorage.setItem('nx_safe_balance', cur + Number(amt));
+                    syncState();
+                    closeModal('depositModal');
+                    alert(`Payment completed! Account credited with Ksh ${amt}`);
+                    document.getElementById('depBtn').innerText = "Confirm Deposit";
+                    document.getElementById('depBtn').disabled = false;
+                });
+
+                intasend.on("FAILED", (resp) => {
+                    alert("The payment attempt failed.");
+                    document.getElementById('depBtn').innerText = "Confirm Deposit";
+                    document.getElementById('depBtn').disabled = false;
+                });
+
+                intasend.on("IN-PROGRESS", () => {
+                    document.getElementById('depBtn').innerText = "Processing...";
+                });
+
+                intasend.checkout({
+                    amount: amt,
+                    cur
