@@ -12,11 +12,33 @@
             --tech-bg: #0f172a;
         }
         
-        body { background: #fafafa; color: var(--text-main); margin: 0; padding-top: 130px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+        body { 
+            background: #fafafa; 
+            color: var(--text-main); 
+            margin: 0; 
+            padding-top: 80px; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            -webkit-font-smoothing: antialiased; 
+        }
 
-        .header-stack { position: fixed; top: 0; left: 0; right: 0; background: #fff; z-index: 2000; border-bottom: 1px solid var(--border); }
+        .header-stack { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            background: #fff; 
+            z-index: 2000; 
+            border-bottom: 1px solid var(--border); 
+        }
 
-        .top-nav { display: flex; align-items: center; justify-content: space-between; padding: 0 16px; height: 60px; }
+        .top-nav { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 16px; 
+            height: 64px; 
+        }
+        
         .logo-wrap { display: flex; flex-direction: column; line-height: 1; }
         .logo-main { font-weight: 900; font-size: 18px; letter-spacing: -0.5px; color: #000; text-transform: uppercase; }
         .logo-sub { font-size: 10px; font-weight: 700; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
@@ -27,11 +49,6 @@
         .btn-deposit:active { background: #334155; }
         
         .user-id { width: 34px; height: 34px; background: var(--tech-bg); color: rgba(255,255,255,0.95); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 11px; font-weight: 800; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-
-        .sub-nav { display: flex; gap: 16px; padding: 10px 16px; overflow-x: auto; background: #fff; border-bottom: 1px solid var(--border); scrollbar-width: none; }
-        .sub-nav::-webkit-scrollbar { display: none; }
-        .cat-link { font-size: 13px; font-weight: 700; color: var(--text-sub); text-decoration: none; white-space: nowrap; cursor: pointer; }
-        .cat-link.active { color: #000; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: -10px; }
 
         #dashboard { max-width: 550px; margin: auto; padding: 12px; }
         
@@ -48,11 +65,6 @@
         .trade-btn.no { background: var(--no); color: var(--no-text); }
         
         .resolve-btn { width: 100%; margin-top: 12px; background: #f8fafc; border: 1px dashed var(--border); padding: 8px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; color: var(--text-sub); }
-
-        .news-card { border-left: 3px solid var(--accent); background: #f8fafc; padding: 14px; border-radius: 0 10px 10px 0; margin-bottom: 12px; }
-        .news-tag { font-size: 10px; font-weight: 800; color: var(--accent); text-transform: uppercase; margin-bottom: 4px; display: block; }
-        .news-h { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: #000; }
-        .news-p { font-size: 13px; color: var(--text-sub); line-height: 1.45; margin: 0; }
 
         .overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); z-index: 5000; align-items: center; justify-content: center; padding: 16px; }
         .modal { background: #fff; width: 100%; max-width: 350px; padding: 28px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); box-sizing: border-box; }
@@ -88,14 +100,6 @@
                     <button onclick="openModal('depositModal')" class="btn-deposit">Deposit</button>
                 </div>
             </div>
-        </div>
-        <div class="sub-nav">
-            <div class="cat-link active" onclick="filterCat('All', this)">All Markets</div>
-            <div class="cat-link" onclick="filterCat('News', this)">Global News</div>
-            <div class="cat-link" onclick="filterCat('World', this)">World</div>
-            <div class="cat-link" onclick="filterCat('Sports', this)">Sports</div>
-            <div class="cat-link" onclick="filterCat('Entertainment', this)">Entertainment</div>
-            <div class="cat-link" onclick="filterCat('Tech', this)">Technology</div>
         </div>
     </div>
 
@@ -168,25 +172,24 @@
     </div>
 
     <script>
-        let currentCat = 'All';
         let markets = [];
 
+        // All prediction listings in one single scrollable list
         const baseMarkets = [
-            { type: 'm', cat: "World", q: "Will Jesus come back before June?", p: 4, id: "m-jesus" },
-            { type: 'm', cat: "World", q: "Will global central banks reduce interest rates by June?", p: 72, id: "m-rates" },
-            { type: 'm', cat: "Sports", q: "Will Arsenal win their next Premier League match?", p: 68, id: "m-arsenal" },
-            { type: 'm', cat: "Sports", q: "Will Real Madrid win the Champions League this season?", p: 79, id: "m-realmadrid" },
-            { type: 'm', cat: "Entertainment", q: "Will Marvel announce Black Panther 3 by end of this year?", p: 55, id: "m-bp3" },
-            { type: 'm', cat: "Entertainment", q: "Will the next James Bond actor be announced before August?", p: 41, id: "m-jamesbond" },
-            { type: 'm', cat: "Tech", q: "Will Apple release a foldable iPhone next year?", p: 35, id: "m-fold" },
-            { type: 'm', cat: "Tech", q: "Will OpenAI release GPT-5 before July?", p: 58, id: "m-gpt" },
-            { type: 'n', cat: "News", h: "Global Markets Review", p: "Indices fluctuate as inflation metrics point to sustained rates.", id: "n-global" }
+            { q: "Will Jesus come back before June?", p: 4, id: "m-jesus" },
+            { q: "Will global central banks reduce interest rates by June?", p: 72, id: "m-rates" },
+            { q: "Will Arsenal win their next Premier League match?", p: 68, id: "m-arsenal" },
+            { q: "Will Real Madrid win the Champions League this season?", p: 79, id: "m-realmadrid" },
+            { q: "Will Marvel announce Black Panther 3 by end of this year?", p: 55, id: "m-bp3" },
+            { q: "Will the next James Bond actor be announced before August?", p: 41, id: "m-jamesbond" },
+            { q: "Will Apple release a foldable iPhone next year?", p: 35, id: "m-fold" },
+            { q: "Will OpenAI release GPT-5 before July?", p: 58, id: "m-gpt" }
         ];
 
         window.addEventListener('DOMContentLoaded', () => {
             loadPersistedMarkets();
             syncState(); 
-            render('All');
+            render();
         });
 
         function loadPersistedMarkets() {
@@ -208,57 +211,37 @@
             localStorage.setItem('nx_safe_markets', JSON.stringify(markets));
         }
 
-        function render(cat) {
-            currentCat = cat;
+        function render() {
             const f = document.getElementById('feed'); 
             if (!f) return;
             f.innerHTML = '';
             
-            let filtered = markets.filter(m => {
-                if (cat === 'All') return true;
-                if (cat === 'News') return m.type === 'n';
-                return m.cat === cat && m.type === 'm';
-            });
-
-            if (filtered.length === 0) {
-                f.innerHTML = `<p style="text-align:center; color:var(--text-sub); padding:40px 0; font-size:13px; font-weight:600;">No listings found in this category.</p>`;
+            if (markets.length === 0) {
+                f.innerHTML = `<p style="text-align:center; color:var(--text-sub); padding:40px 0; font-size:13px; font-weight:600;">No listings found.</p>`;
                 return;
             }
 
-            filtered.forEach(m => {
+            markets.forEach(m => {
                 const card = document.createElement('div');
                 card.id = 'market-' + m.id;
+                card.className = 'market-card';
                 
-                if(m.type === 'm') {
-                    card.className = 'market-card';
-                    const wager = getActiveWager(m.id);
-                    const activeStakeStatus = wager ? `<br><span style="color:var(--accent); font-size:11px; font-weight:700;">Wager logged: Ksh ${wager.amt} on '${wager.side}'</span>` : '';
+                const wager = getActiveWager(m.id);
+                const activeStakeStatus = wager ? `<br><span style="color:var(--accent); font-size:11px; font-weight:700;">Wager logged: Ksh ${wager.amt} on '${wager.side}'</span>` : '';
 
-                    card.innerHTML = `
-                        <div class="m-header">
-                            <div class="m-title">${m.q}${activeStakeStatus}</div>
-                            <div><span class="odds-val">${m.p}%</span><span class="odds-lbl">odds</span></div>
-                        </div>
-                        <div class="btn-group">
-                            <button class="trade-btn yes" onclick="openStakeModal('YES', '${m.q.replace(/'/g, "\\'")}', '${m.id}')">Yes</button>
-                            <button class="trade-btn no" onclick="openStakeModal('NO', '${m.q.replace(/'/g, "\\'")}', '${m.id}')">No</button>
-                        </div>
-                        <button class="resolve-btn" onclick="resolvePrediction('${m.id}')">Determine Settlement</button>`;
-                } else {
-                    card.className = 'news-card';
-                    card.innerHTML = `
-                        <span class="news-tag">System Alert</span>
-                        <div class="news-h">${m.h}</div>
-                        <p class="news-p">${m.p}</p>`;
-                }
+                card.innerHTML = `
+                    <div class="m-header">
+                        <div class="m-title">${m.q}${activeStakeStatus}</div>
+                        <div><span class="odds-val">${m.p}%</span><span class="odds-lbl">odds</span></div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="trade-btn yes" onclick="openStakeModal('YES', '${m.q.replace(/'/g, "\\'")}', '${m.id}')">Yes</button>
+                        <button class="trade-btn no" onclick="openStakeModal('NO', '${m.q.replace(/'/g, "\\'")}', '${m.id}')">No</button>
+                    </div>
+                    <button class="resolve-btn" onclick="resolvePrediction('${m.id}')">Determine Settlement</button>
+                `;
                 f.appendChild(card);
             });
-        }
-
-        function filterCat(cat, el) {
-            document.querySelectorAll('.cat-link').forEach(c => c.classList.remove('active'));
-            if(el) el.classList.add('active');
-            render(cat);
         }
 
         function getActiveWager(marketId) {
@@ -288,7 +271,7 @@
 
                 syncState();
                 closeModal('stakeModal');
-                render(currentCat);
+                render();
                 alert(`Stake placed on '${side}'!`);
             };
         }
@@ -319,7 +302,7 @@
             markets = markets.filter(m => m.id !== marketId);
             saveMarkets();
             syncState();
-            render(currentCat);
+            render();
             alert(alertMsg);
         }
 
@@ -353,4 +336,25 @@
             syncState();
         }
 
-        function setAmt(v) { document.g
+        function setAmt(v) { document.getElementById('depAmt').value = v; }
+
+        function payNow() {
+            const amt = document.getElementById('depAmt').value;
+            const email = localStorage.getItem('nx_safe_user');
+
+            if(!email) return openModal('authModal');
+            if(amt < 200) return alert("Minimum deposit requirement is Ksh 200");
+
+            let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
+            localStorage.setItem('nx_safe_balance', cur + Number(amt));
+            syncState();
+            closeModal('depositModal');
+            alert(`M-Pesa transaction confirmed! Ksh ${amt} deposited.`);
+        }
+
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function logout() { if(confirm("End Session?")) { localStorage.clear(); location.reload(); } }
+    </script>
+</body>
+</html>
