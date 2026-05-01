@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Polymarkets Africa | Terminal</title>
     
+    <script src="https://unpkg.com/intasend-inlinejs-sdk@4.0.7/build/intasend-inline.js"></script>
+
     <style>
         :root { 
             --accent: #2ebd85; --border: #e2e8f0; --text-main: #0f172a; --text-sub: #64748b;
@@ -344,12 +346,50 @@
             if(!email) return openModal('authModal');
             if(amt < 200) return alert("Minimum deposit requirement is Ksh 200");
 
-            // Direct payment routing fallback - never drops script errors
-            let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
-            localStorage.setItem('nx_safe_balance', cur + Number(amt));
-            syncState();
-            closeModal('depositModal');
-            alert(`M-Pesa transaction confirmed using Key: ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad.\n\nKsh ${amt} credited to balance.`);
+            const btn = document.getElementById('depBtn');
+            btn.innerText = "Launching checkout...";
+            btn.disabled = true;
+
+            try {
+                // Instantiating the official IntaSend library
+                const intasend = new window.IntaSend({
+                    publicAPIKey: "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad",
+                    live: false
+                });
+
+                intasend.checkout({
+                    amount: amt,
+                    currency: "KES",
+                    email: email,
+                    api_ref: "terminal-deposit"
+                });
+
+                intasend.on("COMPLETE", (resp) => {
+                    let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
+                    localStorage.setItem('nx_safe_balance', cur + Number(amt));
+                    syncState();
+                    closeModal('depositModal');
+                    alert(`Payment completed! Account credited with Ksh ${amt}`);
+                    btn.innerText = "Confirm Deposit";
+                    btn.disabled = false;
+                });
+
+                intasend.on("FAILED", (resp) => {
+                    alert("The payment attempt failed.");
+                    btn.innerText = "Confirm Deposit";
+                    btn.disabled = false;
+                });
+
+                intasend.on("IN-PROGRESS", () => {
+                    btn.innerText = "Processing...";
+                });
+
+            } catch (e) {
+                console.error(e);
+                alert("Please check your network or try loading the page again.");
+                btn.innerText = "Confirm Deposit";
+                btn.disabled = false;
+            }
         }
 
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
