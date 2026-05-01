@@ -3,131 +3,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Predict Africa | M-Pesa Prediction Market</title>
+    <title>Predict Africa | Prediction Market</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://www.intasend.com/static/js/intasend.inline.js"></script>
+    
     <style>
-        :root { --primary: #1a237e; --success: #2e7d32; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; justify-content: center; }
-        .app-container { width: 100%; max-width: 450px; background: white; min-height: 100vh; box-shadow: 0 0 20px rgba(0,0,0,0.1); padding: 20px; }
-        .header { text-align: center; color: var(--primary); margin-bottom: 30px; }
-        .card { border: 1px solid #eee; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-        .balance-label { font-size: 14px; color: #666; }
-        .balance-amount { font-size: 32px; font-weight: bold; color: var(--primary); }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
-        .btn-auth { background: var(--primary); color: white; }
-        .btn-deposit { background: var(--success); color: white; margin-top: 10px; }
-        #main-ui { display: none; }
+        :root {
+            --primary: #1a237e;
+            --secondary: #5c6bc0;
+            --success: #2e7d32;
+            --danger: #d32f2f;
+            --bg: #f8f9fa;
+            --card: #ffffff;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            color: #333;
+        }
+
+        .app-shell {
+            width: 100%;
+            max-width: 480px;
+            min-height: 100vh;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Styling */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .container { padding: 15px; }
+
+        /* Card Styling */
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        /* Balance Display */
+        .balance-card {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+        .balance-label { font-size: 0.9rem; opacity: 0.9; }
+        .balance-value { font-size: 2.2rem; font-weight: 800; margin: 5px 0; }
+
+        /* Market Cards */
+        .market-card {
+            border: 1px solid #edf2f7;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 15px;
+            background: white;
+        }
+        .market-category {
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: var(--secondary);
+            letter-spacing: 1px;
+        }
+        .market-question { font-size: 1.1rem; font-weight: 600; margin: 10px 0; line-height: 1.4; }
+
+        /* Betting Buttons */
+        .bet-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-bet {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .btn-yes { background: #e8f5e9; color: var(--success); border: 1px solid #a5d6a7; }
+        .btn-no { background: #ffebee; color: var(--danger); border: 1px solid #ef9a9a; }
+        .btn-bet:active { transform: scale(0.98); }
+        .price { font-size: 1.2rem; }
+
+        /* Inputs & Auth */
+        input {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            width: 100%;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #main-app { display: none; }
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    <div class="header">
-        <h1>Predict Africa</h1>
-        <p>News & Prediction Market</p>
-    </div>
+<div class="app-shell">
+    <header>
+        <h1 style="margin:0; font-size: 1.5rem;">Predict Africa</h1>
+    </header>
 
-    <div id="auth-ui" class="card">
-        <h3>Login or Create Account</h3>
-        <input type="email" id="email" placeholder="Email Address">
-        <input type="password" id="password" placeholder="Password">
-        <button class="btn-auth" onclick="handleAuth()">Continue</button>
-    </div>
-
-    <div id="main-ui">
-        <div class="card">
-            <span class="balance-label">Your Wallet Balance</span>
-            <div class="balance-amount">KES <span id="display-balance">0.00</span></div>
+    <div class="container">
+        <div id="auth-section" class="card">
+            <h2 style="margin-top:0;">Welcome</h2>
+            <p>Login or create an account to start trading on African news.</p>
+            <input type="email" id="email" placeholder="Email Address">
+            <input type="password" id="password" placeholder="Password">
+            <button class="btn-primary" onclick="handleAuth()">Sign In / Sign Up</button>
         </div>
 
-        <div class="card">
-            <h3>Deposit via M-Pesa</h3>
-            <input type="number" id="deposit-amount" value="10" min="10">
-            <button class="btn-deposit" onclick="initiatePayment()">Deposit Now</button>
+        <div id="main-app">
+            <div class="card balance-card">
+                <div class="balance-label">Available Balance</div>
+                <div class="balance-value">KES <span id="user-balance">0.00</span></div>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <input type="number" id="deposit-amt" value="500" style="margin:0; flex:2; border:none;">
+                    <button onclick="payWithIntaSend()" style="flex:1; border-radius:10px; border:none; background:#ffd600; font-weight:bold; cursor:pointer;">Deposit</button>
+                </div>
+            </div>
+
+            <h3 style="margin-left: 5px;">Trending Markets</h3>
+            <div id="market-list">
+                <p style="text-align:center; color:#666;">Loading markets...</p>
+            </div>
+
+            <button onclick="logout()" style="background:none; border:none; color:var(--danger); width:100%; padding:20px; cursor:pointer;">Logout Account</button>
         </div>
-        
-        <button onclick="supabaseClient.auth.signOut().then(() => location.reload())" style="background:none; color:red; font-size:12px;">Sign Out</button>
     </div>
 </div>
 
 <script>
-    // 1. CONFIGURATION
+    // --- 1. CONFIGURATION ---
     const SB_URL = "https://hwxnfzuwaeseszgsjeny.supabase.co";
     const SB_KEY = "sb_publishable_C_fx8fnHQ9c1x_ZkWIG-gQ_2l2Mt-NL";
-    const INTASEND_PUB_KEY = "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad";
+    const INTASEND_KEY = "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad";
 
-    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
-    let userSession = null;
+    const _supabase = supabase.createClient(SB_URL, SB_KEY);
+    let user = null;
 
-    // 2. AUTHENTICATION LOGIC
+    // --- 2. AUTHENTICATION ---
     async function handleAuth() {
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
 
-        // Try Login
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
         
         if (error) {
-            // If login fails, try Sign Up
-            const { data: sData, error: sError } = await supabaseClient.auth.signUp({ email, password });
-            if (sError) alert("Error: " + sError.message);
-            else alert("Account created! Please check your email for a verification link.");
+            const { data: sData, error: sError } = await _supabase.auth.signUp({ email, password });
+            if (sError) alert(sError.message);
+            else alert("Account created! Check email for verification.");
         } else {
-            setupDashboard(data.user);
+            initApp(data.user);
         }
     }
 
-    // 3. DASHBOARD & REALTIME SETUP
-    async function setupDashboard(user) {
-        userSession = user;
-        document.getElementById('auth-ui').style.display = 'none';
-        document.getElementById('main-ui').style.display = 'block';
-
-        // Initial Balance Fetch
-        const { data } = await supabaseClient.from('profiles').select('wallet_balance').eq('id', user.id).single();
-        if (data) document.getElementById('display-balance').innerText = data.wallet_balance;
-
-        // Listen for Realtime Balance Updates
-        supabaseClient
-            .channel('balance-changes')
-            .on('postgres_changes', { 
-                event: 'UPDATE', 
-                schema: 'public', 
-                table: 'profiles', 
-                filter: `id=eq.${user.id}` 
-            }, payload => {
-                document.getElementById('display-balance').innerText = payload.new.wallet_balance;
-                alert("Deposit Received! KES " + payload.new.wallet_balance);
-            })
-            .subscribe();
+    async function logout() {
+        await _supabase.auth.signOut();
+        location.reload();
     }
 
-    // 4. INTASEND PAYMENT
-    function initiatePayment() {
-        const amt = document.getElementById('deposit-amount').value;
+    // --- 3. APP LOGIC ---
+    async function initApp(userData) {
+        user = userData;
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
         
-        new window.IntaSend({
-            public_key: INTASEND_PUB_KEY,
-            live: false
-        })
-        .on("COMPLETE", (results) => { console.log("Intasend success"); })
-        .on("FAILED", (results) => { alert("Payment Failed"); })
-        .buttons({
-            charge: { amount: amt, currency: "KES" },
-            customer: { email: userSession.email },
-            // WE SEND THE USER ID IN THE COMMENT FOR THE WEBHOOK TO WORK
-            comment: userSession.id 
+        fetchBalance();
+        loadMarkets();
+        subscribeToBalance();
+    }
+
+    async function fetchBalance() {
+        const { data } = await _supabase.from('profiles').select('wallet_balance').eq('id', user.id).single();
+        if (data) document.getElementById('user-balance').innerText = data.wallet_balance.toLocaleString();
+    }
+
+    function subscribeToBalance() {
+        _supabase.channel('custom-filter-channel')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, 
+        (payload) => {
+            document.getElementById('user-balance').innerText = payload.new.wallet_balance.toLocaleString();
+            alert("Success! Deposit confirmed.");
+        }).subscribe();
+    }
+
+    async function loadMarkets() {
+        const { data: markets } = await _supabase.from('markets').select('*').eq('resolved', false);
+        const list = document.getElementById('market-list');
+        list.innerHTML = '';
+
+        if (!markets || markets.length === 0) {
+            list.innerHTML = '<p style="text-align:center;">No active markets found.</p>';
+            return;
+        }
+
+        markets.forEach(m => {
+            list.innerHTML += `
+                <div class="market-card">
+                    <span class="market-category">${m.category}</span>
+                    <div class="market-question">${m.question}</div>
+                    <div class="bet-actions">
+                        <button class="btn-bet btn-yes" onclick="buy('${m.id}', 'yes')">
+                            <span class="price">${Math.round(m.yes_price * 100)}¢</span>
+                            <span>YES</span>
+                        </button>
+                        <button class="btn-bet btn-no" onclick="buy('${m.id}', 'no')">
+                            <span class="price">${Math.round(m.no_price * 100)}¢</span>
+                            <span>NO</span>
+                        </button>
+                    </div>
+                </div>
+            `;
         });
     }
 
-    // Check if user is already logged in on page load
-    supabaseClient.auth.getUser().then(({data}) => {
-        if(data.user) setupDashboard(data.user);
+    // --- 4. PAYMENTS ---
+    function payWithIntaSend() {
+        const amount = document.getElementById('deposit-amt').value;
+        const intasend = new window.IntaSend({
+            public_key: INTASEND_KEY,
+            live: false
+        });
+
+        intasend.buttons({
+            charge: { amount: amount, currency: "KES" },
+            customer: { email: user.email },
+            comment: user.id // CRITICAL: This links the payment to the user in the database
+        });
+    }
+
+    async function buy(marketId, side) {
+        alert("Trading logic triggered for " + side + ". (Next step: deduct balance & create bet record)");
+    }
+
+    // Auto-login check
+    _supabase.auth.getUser().then(({data}) => {
+        if(data.user) initApp(data.user);
     });
 </script>
 
 </body>
 </html>
-
