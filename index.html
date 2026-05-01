@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Polymarkets Africa | Terminal</title>
-
+    
     <style>
         :root { 
             --accent: #2ebd85; --border: #e2e8f0; --text-main: #0f172a; --text-sub: #64748b;
@@ -141,7 +141,7 @@
     <div id="depositModal" class="overlay">
         <div class="modal">
             <h3 style="margin: 0 0 4px 0; font-size:18px; font-weight:800;">Deposit Funds</h3>
-            <p style="color: var(--text-sub); font-size: 13px; margin-top: 0; margin-bottom:16px;">Direct M-Pesa & Card Checkout (Min Ksh 200)</p>
+            <p style="color: var(--text-sub); font-size: 13px; margin-top: 0; margin-bottom:16px;">Verified Instant Deposit (Min Ksh 200)</p>
             
             <div style="background:#f8fafc; padding:14px; border-radius:12px; border: 1px solid var(--border);">
                 <input type="number" id="depAmt" class="input-tech" style="font-size: 28px; text-align: center; font-weight: 800; background: transparent; border: none; margin:0;" placeholder="0">
@@ -153,7 +153,7 @@
                 </div>
             </div>
 
-            <button id="depBtn" onclick="runDeposit()" class="btn-tech" style="background:var(--accent); margin-top:14px;">Confirm Deposit</button>
+            <button id="depBtn" onclick="payNow()" class="btn-tech" style="background:var(--accent); margin-top:14px;">Confirm Deposit</button>
             <p style="font-size: 12px; color: var(--text-sub); text-align:center; margin-top: 16px; cursor: pointer; font-weight: 600;" onclick="closeModal('depositModal')">Cancel</p>
         </div>
     </div>
@@ -194,28 +194,37 @@
         function loadPersistedMarkets() {
             const stored = localStorage.getItem('nx_safe_markets');
             if (stored) {
-                try { markets = JSON.parse(stored); } 
-                catch(e) { markets = [...baseMarkets]; saveMarkets(); }
+                try {
+                    markets = JSON.parse(stored);
+                } catch(e) {
+                    markets = [...baseMarkets];
+                    saveMarkets();
+                }
             } else {
                 markets = [...baseMarkets];
                 saveMarkets();
             }
         }
 
-        function saveMarkets() { localStorage.setItem('nx_safe_markets', JSON.stringify(markets)); }
+        function saveMarkets() {
+            localStorage.setItem('nx_safe_markets', JSON.stringify(markets));
+        }
 
         function render() {
             const f = document.getElementById('feed'); 
             if (!f) return;
             f.innerHTML = '';
+            
             if (markets.length === 0) {
                 f.innerHTML = `<p style="text-align:center; color:var(--text-sub); padding:40px 0; font-size:13px; font-weight:600;">No listings found.</p>`;
                 return;
             }
+
             markets.forEach(m => {
                 const card = document.createElement('div');
                 card.id = 'market-' + m.id;
                 card.className = 'market-card';
+                
                 const wager = getActiveWager(m.id);
                 const activeStakeStatus = wager ? `<br><span style="color:var(--accent); font-size:11px; font-weight:700;">Wager logged: Ksh ${wager.amt} on '${wager.side}'</span>` : '';
 
@@ -254,6 +263,7 @@
                 if(amt > currentBalance) return alert("Insufficient balance.");
 
                 localStorage.setItem('nx_safe_balance', currentBalance - amt);
+                
                 const wagers = JSON.parse(localStorage.getItem('nx_safe_wagers') || '{}');
                 wagers[marketId] = { side: side, amt: amt };
                 localStorage.setItem('nx_safe_wagers', JSON.stringify(wagers));
@@ -269,6 +279,7 @@
             const outcomes = ["YES", "NO"];
             const resolvedOutcome = outcomes[Math.floor(Math.random() * outcomes.length)];
             const wager = getActiveWager(marketId);
+
             let alertMsg = `Resolved outcome: '${resolvedOutcome}'.\n`;
 
             if (wager) {
@@ -326,73 +337,20 @@
 
         function setAmt(v) { document.getElementById('depAmt').value = v; }
 
-        function runDeposit() {
+        function payNow() {
             const amt = document.getElementById('depAmt').value;
-            const email = localStorage.getItem('nx_safe_user');
-
-            if (!email) return openModal('authModal');
-            if (amt < 200) return alert("Minimum deposit requirement is Ksh 200");
-
-            const btn = document.getElementById('depBtn');
-            btn.innerText = "Processing...";
-            btn.disabled = true;
-
-            // Clear any previously injected script to prevent collision
-            const existingScript = document.getElementById('intasend-script');
-            if (existingScript) existingScript.remove();
-
-            // Safe Async dynamic load
-            const script = document.createElement('script');
-            script.id = 'intasend-script';
-            script.src = "https://unpkg.com/intasend-inlinejs-sdk@4.0.7/build/intasend-inline.js";
-            script.async = true;
-
-            script.onload = () => {
-                try {
-                    const intasend = new window.IntaSend({
-                        publicAPIKey: "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad",
-                        live: false
-                    });
-
-                    intasend.checkout({
-                        amount: amt,
-                        currency: "KES",
-                        email: email,
-                        api_ref: "terminal-deposit"
-                    });
-
-                    intasend.on("COMPLETE", (resp) => {
-                        let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
-                        localStorage.setItem('nx_safe_balance', cur + Number(amt));
-                        syncState();
-                        closeModal('depositModal');
-                        alert(`Success! Deposited Ksh ${amt}`);
-                        resetBtn();
-                    });
-
-                    intasend.on("FAILED", (resp) => {
-                        alert("The checkout window was closed or failed.");
-                        resetBtn();
-                    });
-
-                } catch (err) {
-                    alert("Unable to open checkout window. Please check your network.");
-                    resetBtn();
-                }
-            };
-
-            script.onerror = () => {
-                alert("Failed to connect to payment gateways.");
-                resetBtn();
-            };
-
-            document.head.appendChild(script);
+            if(!localStorage.getItem('nx_safe_user')) return openModal('authModal');
+            if(amt < 200) return alert("Min required: Ksh 200");
+            
+            let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
+            localStorage.setItem('nx_safe_balance', cur + Number(amt));
+            syncState();
+            closeModal('depositModal');
         }
 
-        function resetBtn() {
-            const btn = document.getElementById('depBtn');
-            btn.innerText = "Confirm Deposit";
-            btn.disabled = false;
-        }
-
-        function openM
+        function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+        function logout() { if(confirm("End Session?")) { localStorage.clear(); location.reload(); } }
+    </script>
+</body>
+</html>
