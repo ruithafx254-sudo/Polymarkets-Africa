@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Polymarkets Africa | Terminal</title>
     
-    <script src="https://unpkg.com/intasend-inlinejs-sdk@4.0.7/build/intasend-inline.js"></script>
-
     <style>
         :root { 
             --accent: #2ebd85; --border: #e2e8f0; --text-main: #0f172a; --text-sub: #64748b;
@@ -155,7 +153,7 @@
                 </div>
             </div>
 
-            <button id="depBtn" onclick="payNow()" class="btn-tech" style="background:var(--accent); margin-top:14px;">Confirm Deposit</button>
+            <button id="depBtn" onclick="payWithIntasend()" class="btn-tech" style="background:var(--accent); margin-top:14px;">Confirm Deposit</button>
             <p style="font-size: 12px; color: var(--text-sub); text-align:center; margin-top: 16px; cursor: pointer; font-weight: 600;" onclick="closeModal('depositModal')">Cancel</p>
         </div>
     </div>
@@ -175,7 +173,6 @@
 
     <script>
         let markets = [];
-        let intasendInstance = null;
 
         const baseMarkets = [
             { q: "Will Jesus come back before June?", p: 4, id: "m-jesus" },
@@ -192,76 +189,33 @@
             loadPersistedMarkets();
             syncState(); 
             render();
-            initIntaSend();
         });
-
-        function initIntaSend() {
-            // Initialize once on page load to ensure instance is ready immediately
-            try {
-                if (window.IntaSend) {
-                    intasendInstance = new window.IntaSend({
-                        publicAPIKey: "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad",
-                        live: false
-                    });
-
-                    intasendInstance.on("COMPLETE", (resp) => {
-                        const amt = document.getElementById('depAmt').value;
-                        let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
-                        localStorage.setItem('nx_safe_balance', cur + Number(amt));
-                        syncState();
-                        closeModal('depositModal');
-                        alert(`Success! Deposited Ksh ${amt}`);
-                        resetDepButton();
-                    });
-
-                    intasendInstance.on("FAILED", (resp) => {
-                        alert("The checkout failed or was closed.");
-                        resetDepButton();
-                    });
-
-                    intasendInstance.on("IN-PROGRESS", () => {
-                        document.getElementById('depBtn').innerText = "Processing...";
-                    });
-                }
-            } catch(e) {
-                console.error("IntaSend direct init error:", e);
-            }
-        }
 
         function loadPersistedMarkets() {
             const stored = localStorage.getItem('nx_safe_markets');
             if (stored) {
-                try {
-                    markets = JSON.parse(stored);
-                } catch(e) {
-                    markets = [...baseMarkets];
-                    saveMarkets();
-                }
+                try { markets = JSON.parse(stored); } 
+                catch(e) { markets = [...baseMarkets]; saveMarkets(); }
             } else {
                 markets = [...baseMarkets];
                 saveMarkets();
             }
         }
 
-        function saveMarkets() {
-            localStorage.setItem('nx_safe_markets', JSON.stringify(markets));
-        }
+        function saveMarkets() { localStorage.setItem('nx_safe_markets', JSON.stringify(markets)); }
 
         function render() {
             const f = document.getElementById('feed'); 
             if (!f) return;
             f.innerHTML = '';
-            
             if (markets.length === 0) {
                 f.innerHTML = `<p style="text-align:center; color:var(--text-sub); padding:40px 0; font-size:13px; font-weight:600;">No listings found.</p>`;
                 return;
             }
-
             markets.forEach(m => {
                 const card = document.createElement('div');
                 card.id = 'market-' + m.id;
                 card.className = 'market-card';
-                
                 const wager = getActiveWager(m.id);
                 const activeStakeStatus = wager ? `<br><span style="color:var(--accent); font-size:11px; font-weight:700;">Wager logged: Ksh ${wager.amt} on '${wager.side}'</span>` : '';
 
@@ -300,7 +254,6 @@
                 if(amt > currentBalance) return alert("Insufficient balance.");
 
                 localStorage.setItem('nx_safe_balance', currentBalance - amt);
-                
                 const wagers = JSON.parse(localStorage.getItem('nx_safe_wagers') || '{}');
                 wagers[marketId] = { side: side, amt: amt };
                 localStorage.setItem('nx_safe_wagers', JSON.stringify(wagers));
@@ -316,7 +269,6 @@
             const outcomes = ["YES", "NO"];
             const resolvedOutcome = outcomes[Math.floor(Math.random() * outcomes.length)];
             const wager = getActiveWager(marketId);
-
             let alertMsg = `Resolved outcome: '${resolvedOutcome}'.\n`;
 
             if (wager) {
@@ -374,7 +326,7 @@
 
         function setAmt(v) { document.getElementById('depAmt').value = v; }
 
-        function payNow() {
+        function payWithIntasend() {
             const amt = document.getElementById('depAmt').value;
             const email = localStorage.getItem('nx_safe_user');
 
@@ -382,18 +334,62 @@
             if(amt < 200) return alert("Minimum deposit requirement is Ksh 200");
 
             const btn = document.getElementById('depBtn');
-            btn.innerText = "Launching checkout...";
+            btn.innerText = "Connecting...";
             btn.disabled = true;
 
-            // Trigger the preloaded IntaSend instance
-            if (intasendInstance) {
+            // Step 1: Inject the IntaSend script dynamically
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/intasend-inlinejs-sdk@4.0.7/build/intasend-inline.js";
+            script.async = true;
+
+            script.onload = () => {
                 try {
+                    // Step 2: Initialize the script safely once loaded
+                    const intasendInstance = new window.IntaSend({
+                        publicAPIKey: "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad",
+                        live: false
+                    });
+
                     intasendInstance.checkout({
                         amount: amt,
                         currency: "KES",
                         email: email,
                         api_ref: "terminal-deposit"
                     });
+
+                    intasendInstance.on("COMPLETE", (resp) => {
+                        let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
+                        localStorage.setItem('nx_safe_balance', cur + Number(amt));
+                        syncState();
+                        closeModal('depositModal');
+                        alert(`Success! Deposited Ksh ${amt}`);
+                        resetDepButton();
+                    });
+
+                    intasendInstance.on("FAILED", (resp) => {
+                        alert("The payment window was closed.");
+                        resetDepButton();
+                    });
+
                 } catch (e) {
-                    alert("IntaSend runtime setup error. Please refresh.");
-                   
+                    alert("SDK error. Please check your internet connection.");
+                    resetDepButton();
+                }
+            };
+
+            script.onerror = () => {
+                alert("Failed to reach the payment server. Try again later.");
+                resetDepButton();
+            };
+
+            // Inject into DOM to trigger asynchronous download
+            document.body.appendChild(script);
+        }
+
+        function resetDepButton() {
+            const btn = document.getElementById('depBtn');
+            btn.innerText = "Confirm Deposit";
+            btn.disabled = false;
+        }
+
+        function openModal(id) { document.getEleme
