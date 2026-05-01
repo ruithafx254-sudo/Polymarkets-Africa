@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Polymarkets Africa | Terminal</title>
-    
+
     <style>
         :root { 
             --accent: #2ebd85; --border: #e2e8f0; --text-main: #0f172a; --text-sub: #64748b;
@@ -153,7 +153,7 @@
                 </div>
             </div>
 
-            <button id="depBtn" onclick="payWithIntasend()" class="btn-tech" style="background:var(--accent); margin-top:14px;">Confirm Deposit</button>
+            <button id="depBtn" onclick="runDeposit()" class="btn-tech" style="background:var(--accent); margin-top:14px;">Confirm Deposit</button>
             <p style="font-size: 12px; color: var(--text-sub); text-align:center; margin-top: 16px; cursor: pointer; font-weight: 600;" onclick="closeModal('depositModal')">Cancel</p>
         </div>
     </div>
@@ -326,70 +326,73 @@
 
         function setAmt(v) { document.getElementById('depAmt').value = v; }
 
-        function payWithIntasend() {
+        function runDeposit() {
             const amt = document.getElementById('depAmt').value;
             const email = localStorage.getItem('nx_safe_user');
 
-            if(!email) return openModal('authModal');
-            if(amt < 200) return alert("Minimum deposit requirement is Ksh 200");
+            if (!email) return openModal('authModal');
+            if (amt < 200) return alert("Minimum deposit requirement is Ksh 200");
 
             const btn = document.getElementById('depBtn');
-            btn.innerText = "Connecting...";
+            btn.innerText = "Processing...";
             btn.disabled = true;
 
-            // Step 1: Inject the IntaSend script dynamically
+            // Clear any previously injected script to prevent collision
+            const existingScript = document.getElementById('intasend-script');
+            if (existingScript) existingScript.remove();
+
+            // Safe Async dynamic load
             const script = document.createElement('script');
+            script.id = 'intasend-script';
             script.src = "https://unpkg.com/intasend-inlinejs-sdk@4.0.7/build/intasend-inline.js";
             script.async = true;
 
             script.onload = () => {
                 try {
-                    // Step 2: Initialize the script safely once loaded
-                    const intasendInstance = new window.IntaSend({
+                    const intasend = new window.IntaSend({
                         publicAPIKey: "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad",
                         live: false
                     });
 
-                    intasendInstance.checkout({
+                    intasend.checkout({
                         amount: amt,
                         currency: "KES",
                         email: email,
                         api_ref: "terminal-deposit"
                     });
 
-                    intasendInstance.on("COMPLETE", (resp) => {
+                    intasend.on("COMPLETE", (resp) => {
                         let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
                         localStorage.setItem('nx_safe_balance', cur + Number(amt));
                         syncState();
                         closeModal('depositModal');
                         alert(`Success! Deposited Ksh ${amt}`);
-                        resetDepButton();
+                        resetBtn();
                     });
 
-                    intasendInstance.on("FAILED", (resp) => {
-                        alert("The payment window was closed.");
-                        resetDepButton();
+                    intasend.on("FAILED", (resp) => {
+                        alert("The checkout window was closed or failed.");
+                        resetBtn();
                     });
 
-                } catch (e) {
-                    alert("SDK error. Please check your internet connection.");
-                    resetDepButton();
+                } catch (err) {
+                    alert("Unable to open checkout window. Please check your network.");
+                    resetBtn();
                 }
             };
 
             script.onerror = () => {
-                alert("Failed to reach the payment server. Try again later.");
-                resetDepButton();
+                alert("Failed to connect to payment gateways.");
+                resetBtn();
             };
 
-            // Inject into DOM to trigger asynchronous download
-            document.body.appendChild(script);
+            document.head.appendChild(script);
         }
 
-        function resetDepButton() {
+        function resetBtn() {
             const btn = document.getElementById('depBtn');
             btn.innerText = "Confirm Deposit";
             btn.disabled = false;
         }
 
-        function openModal(id) { document.getEleme
+        function openM
