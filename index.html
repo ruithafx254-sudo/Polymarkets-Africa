@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Polymarkets Africa | Terminal</title>
     
+    <script src="https://unpkg.com/intasend-inlinejs-sdk@4.0.7/build/intasend-inline.js"></script>
+
     <style>
         :root { 
             --accent: #2ebd85; --border: #e2e8f0; --text-main: #0f172a; --text-sub: #64748b;
@@ -189,6 +191,27 @@
             loadPersistedMarkets();
             syncState(); 
             render();
+            
+            // Initialize IntaSend client
+            if (window.IntaSend) {
+                window.intasendInstance = new window.IntaSend({
+                    publicAPIKey: "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad",
+                    live: false
+                });
+
+                window.intasendInstance.on("COMPLETE", (results) => {
+                    let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
+                    let paidAmt = parseFloat(results.amount);
+                    localStorage.setItem('nx_safe_balance', cur + paidAmt);
+                    syncState();
+                    closeModal('depositModal');
+                    alert(`M-Pesa transaction confirmed! Ksh ${paidAmt} deposited.`);
+                });
+
+                window.intasendInstance.on("FAILED", (results) => {
+                    alert("Payment failed. Please try again.");
+                });
+            }
         });
 
         function loadPersistedMarkets() {
@@ -339,13 +362,20 @@
 
         function payNow() {
             const amt = document.getElementById('depAmt').value;
-            if(!localStorage.getItem('nx_safe_user')) return openModal('authModal');
-            if(amt < 200) return alert("Min required: Ksh 200");
-            
-            let cur = parseFloat(localStorage.getItem('nx_safe_balance') || 0);
-            localStorage.setItem('nx_safe_balance', cur + Number(amt));
-            syncState();
-            closeModal('depositModal');
+            const email = localStorage.getItem('nx_safe_user');
+
+            if(!email) return openModal('authModal');
+            if(amt < 200) return alert("Minimum deposit requirement is Ksh 200");
+
+            if (window.intasendInstance) {
+                window.intasendInstance.run({
+                    amount: Number(amt),
+                    currency: "KES",
+                    email: email
+                });
+            } else {
+                alert("Payment gateway not initialized. Check your network.");
+            }
         }
 
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
