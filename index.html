@@ -1,1 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predict Africa | M-Pesa Prediction Market</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://www.intasend.com/static/js/intasend.inline.js"></script>
+    <style>
+        :root { --primary: #1a237e; --success: #2e7d32; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; display: flex; justify-content: center; }
+        .app-container { width: 100%; max-width: 450px; background: white; min-height: 100vh; box-shadow: 0 0 20px rgba(0,0,0,0.1); padding: 20px; }
+        .header { text-align: center; color: var(--primary); margin-bottom: 30px; }
+        .card { border: 1px solid #eee; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .balance-label { font-size: 14px; color: #666; }
+        .balance-amount { font-size: 32px; font-weight: bold; color: var(--primary); }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        .btn-auth { background: var(--primary); color: white; }
+        .btn-deposit { background: var(--success); color: white; margin-top: 10px; }
+        #main-ui { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <h1>Predict Africa</h1>
+        <p>News & Prediction Market</p>
+    </div>
+
+    <div id="auth-ui" class="card">
+        <h3>Login or Create Account</h3>
+        <input type="email" id="email" placeholder="Email Address">
+        <input type="password" id="password" placeholder="Password">
+        <button class="btn-auth" onclick="handleAuth()">Continue</button>
+    </div>
+
+    <div id="main-ui">
+        <div class="card">
+            <span class="balance-label">Your Wallet Balance</span>
+            <div class="balance-amount">KES <span id="display-balance">0.00</span></div>
+        </div>
+
+        <div class="card">
+            <h3>Deposit via M-Pesa</h3>
+            <input type="number" id="deposit-amount" value="10" min="10">
+            <button class="btn-deposit" onclick="initiatePayment()">Deposit Now</button>
+        </div>
+        
+        <button onclick="supabaseClient.auth.signOut().then(() => location.reload())" style="background:none; color:red; font-size:12px;">Sign Out</button>
+    </div>
+</div>
+
+<script>
+    // 1. CONFIGURATION
+    const SB_URL = "https://hwxnfzuwaeseszgsjeny.supabase.co";
+    const SB_KEY = "sb_publishable_C_fx8fnHQ9c1x_ZkWIG-gQ_2l2Mt-NL";
+    const INTASEND_PUB_KEY = "ISPubKey_test_7e577665-297c-4b58-b282-7a876f8e03ad";
+
+    const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+    let userSession = null;
+
+    // 2. AUTHENTICATION LOGIC
+    async function handleAuth() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        // Try Login
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        
+        if (error) {
+            // If login fails, try Sign Up
+            const { data: sData, error: sError } = await supabaseClient.auth.signUp({ email, password });
+            if (sError) alert("Error: " + sError.message);
+            else alert("Account created! Please check your email for a verification link.");
+        } else {
+            setupDashboard(data.user);
+        }
+    }
+
+    // 3. DASHBOARD & REALTIME SETUP
+    async function setupDashboard(user) {
+        userSession = user;
+        document.getElementById('auth-ui').style.display = 'none';
+        document.getElementById('main-ui').style.display = 'block';
+
+        // Initial Balance Fetch
+        const { data } = await supabaseClient.from('profiles').select('wallet_balance').eq('id', user.id).single();
+        if (data) document.getElementById('display-balance').innerText = data.wallet_balance;
+
+        // Listen for Realtime Balance Updates
+        supabaseClient
+            .channel('balance-changes')
+            .on('postgres_changes', { 
+                event: 'UPDATE', 
+                schema: 'public', 
+                table: 'profiles', 
+                filter: `id=eq.${user.id}` 
+            }, payload => {
+                document.getElementById('display-balance').innerText = payload.new.wallet_balance;
+                alert("Deposit Received! KES " + payload.new.wallet_balance);
+            })
+            .subscribe();
+    }
+
+    // 4. INTASEND PAYMENT
+    function initiatePayment() {
+        const amt = document.getElementById('deposit-amount').value;
+        
+        new window.IntaSend({
+            public_key: INTASEND_PUB_KEY,
+            live: false
+        })
+        .on("COMPLETE", (results) => { console.log("Intasend success"); })
+        .on("FAILED", (results) => { alert("Payment Failed"); })
+        .buttons({
+            charge: { amount: amt, currency: "KES" },
+            customer: { email: userSession.email },
+            // WE SEND THE USER ID IN THE COMMENT FOR THE WEBHOOK TO WORK
+            comment: userSession.id 
+        });
+    }
+
+    // Check if user is already logged in on page load
+    supabaseClient.auth.getUser().then(({data}) => {
+        if(data.user) setupDashboard(data.user);
+    });
+</script>
+
+</body>
+</html>
 
